@@ -21,9 +21,9 @@ Following python modules are required.
 
 ### plot_ifc.py
 
-![ifc_2th](sample/1_plotifc/2th_order_ifc.pdf)
+![ifc_2th](image/2th_order_ifc.jpeg)
 
-![ifc_6th](sample/1_plotifc/6th_order_ifc.pdf)
+![ifc_6th](image/6th_order_ifc.jpeg)
 
 
 ### calc_pes.py
