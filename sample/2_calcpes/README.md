@@ -26,7 +26,7 @@ In this case, we move atoms along the A2u phonon, which is the most anharmonic m
 Using the displacement paterns made in Step1, we calculate the potential energy of the anharmonic phonon model as 
 
 ```bash
-python ../../plot_pes_to_tadano.py -i TiO2224_anharm.xml -p POSCAR output/disp{01..41}.POSCAR
+python ../../calc_pes.py -i TiO2224_anharm.xml -p POSCAR output/disp{01..41}.POSCAR
 ```
 
 The results are collected in `calc_pes_result.txt`,
