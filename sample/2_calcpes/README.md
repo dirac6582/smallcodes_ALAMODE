@@ -7,7 +7,7 @@ The purpose of the example is to reproduce Fig. 4 in 10.1103/PhysRevB.107.094305
 
 - TiO2224_gamma.evec: Only need for generating displacement patterns
 - POSCAR: equilibrium positions of the rutile TiO2
-- anharm.xml: anharmonic force constants generated from `alm`
+- TiO2224_anharm.xml.zip: anharmonic force constants generated from `alm`. Please unzip to use.
 
 
 ## Step1: generate displacement patterns

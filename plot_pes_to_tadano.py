@@ -87,7 +87,7 @@ class constant:
     bohr_to_ang=0.529177249
 
     
-def calc_displacement(poscar, disp):
+def calc_displacement(poscar:str, poscar_disp:str):
     '''
     calculate atomic displacement from POSCAR and disp*.POSCAR.
 
@@ -98,20 +98,25 @@ def calc_displacement(poscar, disp):
     
     # in angstrom (vasp)
     primitive=ase.io.read(poscar).get_positions()
-    displace=ase.io.read(disp).get_positions()
-    # ang to bohr (bohrで出力していることに注意．)
+    displace=ase.io.read(poscar_disp).get_positions()
+    # calculate displacement with changeing unit from angstrom to bohr
     subtract=(displace-primitive)*constant.ang_to_bohr
     # np.savetxt(dir+"disp"+str(i)+".txt", subtract)
     return subtract
 
 
-def get_max_displace(poscar, disp):
-    '''
-     *.txtファイルを入力すると一番大きいdisplacement(これは全ての原子種の中で）を計算してくれる.
-     これは実際にプロットを作る時に役に立つ.
-    '''
+def get_max_displace(poscar:str, poscar_disp:str)->float:
+    """output maximum displacement for the given configuration
+
+    Args:
+        poscar (str): 
+        disp (_type_): POSCAR with displacement
+
+    Returns:
+        _type_: _description_
+    """
     import numpy as np
-    u_norm=np.linalg.norm(calc_displacement(poscar, disp),axis=1)
+    u_norm=np.linalg.norm(calc_displacement(poscar, poscar_disp),axis=1)
     return np.amax(u_norm)
 
 
