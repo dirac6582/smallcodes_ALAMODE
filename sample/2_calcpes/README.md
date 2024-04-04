@@ -12,15 +12,13 @@ The purpose of the example is to reproduce Fig. 4 in 10.1103/PhysRevB.107.094305
 
 ## Step1: generate displacement patterns
 
-You can generate the displacement patterns using in the ALAMODE as 
+You can generate the displacement patterns using `displace.py` in the ALAMODE as 
 
 ```bash
-
+displace.py --evec --VASP POSCAR --pes='1 6' --Qrange "0 4.0" --num_disp 20 
 ```
 
-In this case, we move atoms along the A2u phonon, which is the most anharmonic mode in the rutile TiO2.
-
-The calculated DFT energies are given in .
+In this case, we move atoms along the A2u phonon, which is the most anharmonic mode in the rutile TiO2. `--pes` specifies the 1st Q-point and 6th branch given in the `evec` file. `Qrange` gives the minimum and maximum normal coordinate amplitude in units of `amu^{1/2}*Angstrom` with the number of displacement being given by `--num_disp` option.  For details, please refer to `alamode`. The calculated DFT energies are given in `output/vasp_result.txt`.
 
 
 ## Step2: calculate anharmonic phonon energies
@@ -46,4 +44,9 @@ where the first column represents the maximum displacement of the given configur
 
 ## Step3: Make a figure to compare anharmonic energies with DFT ones
 
-To see if the phonon model works fine, we compare the potential energy from the phonon model and DFT ones.
+To see if the phonon model works fine, we compare the potential energy from the phonon model and DFT ones. Here is a simple python script to make a graph.
+
+```python
+import matplotlob.pyplot as plt
+
+```
