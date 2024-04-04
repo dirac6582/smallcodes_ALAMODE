@@ -1,18 +1,39 @@
 #!/usr/bin/env python3
 
-'''
-This script calculate the system energy for given atomic configurations.
-
+"""This script calculate the system energy for given atomic configurations.
 
 usage 
 plot_eps.py --alm=sample.xml --vasp=POSCAR file1 file2 ...
+
+note
+It can take a few minutes if there are a lot of anharmonic IFCs. Please be patient...
 
 input
 ---------------
   --alm :: sample.xml :: IFCs file made by alm.
   --vasp:: POSCAR     :: VASP type atomic position file of PRIMITIVE cell without displacements.
   file1,file2,...     :: VASP type atomic position file of PRIMITIVE cell with displacements.
-'''
+
+"""
+
+import numpy as np
+import sys
+try:
+  import ase
+except:
+  sys.exit ('Error: ase not installed')
+
+try:
+  import ase.io # !! caution: here I use ase
+except:
+  sys.exit ('Error: ase.io not installed')
+
+try:
+  import math
+except:
+  sys.exit ('Error: math not installed')
+
+
 
 
 def parse_cml_args(cml):
@@ -29,7 +50,7 @@ def parse_cml_args(cml):
                      default='POSCAR',
                      help='POSCAR of equilibrium lattice. Default is POSCAR ')
     arg.add_argument('-i', '--xml', dest='xml', action='store', type=str,
-                     help='alm xml file to parse')
+                     help='alm xml file including anharmonic force constants to parse')
     arg.add_argument('-T', '--temperature', dest='temperature',
                      action='store', type=float,
                      default=300,
@@ -37,68 +58,22 @@ def parse_cml_args(cml):
     arg.add_argument('-f', '--maxorder', dest='maxorder',
                      action='store', type=int,
                      default=6,
-                     help='maximum order in taylor expansion')
+                     help='maximum order in taylor expansion to calculate. It should be an integer from 2 to 6. For example, sometimes you only calculate up to 4-th order though you have up to 6-th order in your xml file.')
 
-    return arg.parse_args(cml)
+    # parse variables
+    arg_parse = arg.parse_args(cml)
 
+    print(" ")
+    print( " -------------------------------------------- ")
+    print( " PARSE INPUT VARIABLES...")
+    print(f"     Equilibrium position :: {arg_parse.poscar}")
+    print(f"     Anharmonic force     :: {arg_parse.xml}")
+    print(f"     Temperature          :: {arg_parse.temperature}")
+    print(f"     Maxorder             :: {arg_parse.maxorder}")
+    print( " -------------------------------------------- ")
+    print(" ")
 
-def main():
-    import xml.etree.ElementTree as ET
-    import sys
-
-    # parse commandline
-    arg = parse_cml_args(sys.argv[1:])
-
-    #arg.unit == 'cm-1'
-    #t0 = arg.frequency
-
-    # read a xml file
-    tree = ET.parse(arg.xml)
-    
-    # get top element
-    root = tree.getroot()
-
-    # load system information (maxorder::次数-1)
-    fcs_phonon=Fcs_phonon(root=root,maxorder=arg.maxorder-1)
-
-    # load fcs
-    fcs_phonon.load_fcs_xml()
-
-    # calculate energy of given files (arg.files)
-    counter=0
-    for filename in arg.files:
-        print(" file number :: {0}  , file name :: {1}".format(counter,filename))
-        # calculate displacement
-        displacement=calc_displacement(arg.poscar,filename)
-        # calculate max displacement (for graph)
-        max_displacement=get_max_displace(arg.poscar,filename)
-        energy[maxorder-1] # output energy
-        for j in range(2,maxorder):
-            energy[j-1]=fcs_phonon.calculate_energy(u0,j)        
-        #
-        print(filename, u_norm, end="")
-        for j in range(2,maxorder):
-            print(energy[j-1])
-    #
-    # for i in np.arange(1,21):
-    #     i=str(i).zfill(2)
-    #     calc_subtract(i, dir)
-    #     filename=dir+"disp"+str(i)+".txt"
-    #     u0=np.loadtxt(filename)
-    #     u_norm=get_max_displace(filename)
-    #     # print(u_norm)
-    #     E2=fcs_phonon.calculate_energy(u0,2)
-    #     E3=fcs_phonon.calculate_energy(u0,3)
-    #     E4=fcs_phonon.calculate_energy(u0,4)
-    #     E5=fcs_phonon.calculate_energy(u0,5)
-    #     E6=fcs_phonon.calculate_energy(u0,6)
-    #     print(u_norm,E2,E3,E4,E5,E6)
-    return 0
-
-
-
-if __name__ == '__main__':
-    main()
+    return arg_parse
 
 
 # below are main codes
@@ -112,7 +87,7 @@ class constant:
     bohr_to_ang=0.529177249
 
     
-def calc_displacement(poscar, disp):
+def calc_displacement(poscar:str, poscar_disp:str):
     '''
     calculate atomic displacement from POSCAR and disp*.POSCAR.
 
@@ -120,24 +95,28 @@ def calc_displacement(poscar, disp):
     ------------
     vasp uses angstrom, and alm uses bohr (atomic rydberg unit).
     '''
-    import ase.io # !! caution: here I use ase
     
     # in angstrom (vasp)
     primitive=ase.io.read(poscar).get_positions()
-    displace=ase.io.read(disp).get_positions()
-    # ang to bohr (bohrで出力していることに注意．)
+    displace=ase.io.read(poscar_disp).get_positions()
+    # calculate displacement with changeing unit from angstrom to bohr
     subtract=(displace-primitive)*constant.ang_to_bohr
     # np.savetxt(dir+"disp"+str(i)+".txt", subtract)
     return subtract
 
 
-def get_max_displace(poscar, disp):
-    '''
-     *.txtファイルを入力すると一番大きいdisplacement(これは全ての原子種の中で）を計算してくれる.
-     これは実際にプロットを作る時に役に立つ.
-    '''
+def get_max_displace(poscar:str, poscar_disp:str)->float:
+    """output maximum displacement for the given configuration
+
+    Args:
+        poscar (str): 
+        disp (_type_): POSCAR with displacement
+
+    Returns:
+        _type_: _description_
+    """
     import numpy as np
-    u_norm=np.linalg.norm(calc_displacement(poscar, disp),axis=1)
+    u_norm=np.linalg.norm(calc_displacement(poscar, poscar_disp),axis=1)
     return np.amax(u_norm)
 
 
@@ -172,22 +151,28 @@ class System:
             self.atom_num = atom_num
             self.tran_num = tran_num
 
-    def load_system_info(self):
-        '''
-        load_system_info:
-          - The number of atoms in supercell
-          - The number of primitive cell
-          - The number of atoms in primitive cell
-        '''
-        # 全原子数
+    def load_system_info(self) -> None:
+        """load_system_info.
+        load_system_info. The name of variables are the same as ALAMODE.
+          - nat:    The number of atoms in supercell
+          - ntran:  The number of primitive cell
+          - natmin: The number of atoms in primitive cell
+        """
+        # Total atomic numbers
         self.__nat:int=int(self.__root.find("Structure").find("NumberOfAtoms").text)
-        # supercellの数
+        # The number of supercells
         self.__ntran=int(self.__root.find("Symmetry").find("NumberOfTranslations").text)
-        #単位格子の原子数
+        # The atomic numbers in a single unitcell
         self.__natmin = self.__nat // self.__ntran
-        #結果出力
-        print(" nat,ntran,natmin=",self.__nat,self.__ntran,self.__natmin)
-
+        # output results
+        print( " ")
+        print( "  LOAD SYSTEM INFO... ")
+        print(f"      nat    = {self.__nat}")
+        print(f"      ntran  = {self.__ntran}")
+        print(f"      natmin = {self.__natmin}")
+        print( " -------------------------------------------- ")
+        print( " ")
+        
     def make_mapping(self):
         '''
         read map_p2s,map_s2p
@@ -221,17 +206,24 @@ class Fcs_phonon():
         self.system.load_system_info()
         self.system.make_mapping()
     
-    def load_fcs_xml(self):
+    def load_fcs_xml(self)-> None:
+      """load anharmonic IFCs
+      
+      load anharmonic IFCs from xml.
+      """
       from sympy.utilities.iterables import multiset_permutations
       # fcs
       self.force_constant_with_cell=[[] for y in range(self.maxorder)]
       # loop over IFC order
+      print( "")
+      print( " LOADING ANHARMONIC FORCE CONSTANTS IN XML.")
       for order in range(self.maxorder):
-        print("order = ", order)
+        print(f"    order =  {order}")
         if (order == 0):
           str_tag = "HARMONIC"
         else:
           str_tag = "ANHARM" + str(order + 2)
+
   
         # loop over IFC
         for child in self.__root.find("ForceConstants").find(str_tag):
@@ -282,20 +274,29 @@ class Fcs_phonon():
             [ivec_tmp.append(AtomCellSuper(index=3*self.system.map_s2p[atmn].atom_num+xyz, tran=self.system.map_s2p[atmn].tran_num, cell_s=multiplicity)) for atmn,xyz in zip([ n//3 for n in perm_list], [n % 3 for n in perm_list])] 
             self.force_constant_with_cell[order].append(FcsArrayWithCell(fcs_val=fcs_val,pairs=ivec_tmp))
       #
+      print( " FINISH READING XML.")
+      print( " -------------------------------------------- ")
+      print( " ")
+
       if not __debug__:
         for i in range(self.maxorder):
           print("  Number of non-zero IFCs for ", i + 2 , " order: (include permutation) ", len(self.force_constant_with_cell[i]))
 
 
     
-    def calculate_energy_of_ith_order(self, u0, i:int):
-      '''
-      calculate energy of only (i+2)-th order contribution.
-      '''
-      import math
-      length:int   = len(self.force_constant_with_cell[i])   #その次数に入っているIFCsの数  
-      nelem:int    = i + 2;                             #次数,つまりIFCsにnelemだけの原子が関わっている.
-      factorial    = math.factorial(nelem)              #エネルギーのtaylor展開につける係数.
+    def calculate_energy_of_ith_order(self, u0:np.array, i:int):
+      """calculate energy of only (i+2)-th order contribution.
+
+      Args:
+          u0 (np.array): atomic displacement in [num_atoms, 3] form.
+          i (int): Taylor order. i=0 corresponds to the second order.
+
+      Returns:
+          _type_: _description_
+      """
+      length:int   = len(self.force_constant_with_cell[i])   # The number of IFCs at the i-th order.
+      nelem:int    = i + 2;                                  #次数,つまりIFCsにnelemだけの原子が関わっている.
+      factorial    = math.factorial(nelem)                   # The taylor coefficient of the PES for nelem-th order
       U:float      = 0
       #
       for j in range(length):   #loop over IFC at i-th order
@@ -304,13 +305,13 @@ class Fcs_phonon():
         #
         for k in range(nelem): #loop over IFC order
           (atmn,xyz) = divmod(self.force_constant_with_cell[i][j].pairs[k].index, 3)   #3で割った商はatmn(in primitive cell).余はxyz.
-          #
+          # 
           dtmp   *=  u0[atmn][xyz]  
         U += dtmp
       # energy in eV unit.
       return U*constant.Ry_to_eV #13.605698066
 
-    def calculate_energy(self, u0, i:int):
+    def calculate_energy(self, u0:np.array, i:int):
       '''
       calculate_energy up to i-th order. 
       '''
@@ -324,4 +325,97 @@ class Fcs_phonon():
         return self.calculate_energy_of_ith_order(u0, i-2)
       else:
         return self.calculate_energy_of_ith_order(u0, i-2)+self.calculate_energy(u0, i-1)
+
+
+
+def main():
+    print(" ")
+    print(" *****************************************************************")
+    print("                       calc_pes.py                                ")
+    print("                       Version. 1.0.0                             ")
+    print(" *****************************************************************")
+    print(" ")
+    print("  CAUTION!! IF THE ANHARMONIC ICS FILE IS LARGE, IT TAKES A FEW MINUTES TO FINISH ALL. BE PATIENT.")
+    print("  ")
+    print("  The result will be saved to calc_pes_result.txt.")
+    print("")
+
+  
+    import xml.etree.ElementTree as ET
+    import sys
+    import numpy as np
+
+    # parse commandline
+    arg = parse_cml_args(sys.argv[1:])
+
+    #arg.unit == 'cm-1'
+    #t0 = arg.frequency
+
+    # read a xml file
+    tree = ET.parse(arg.xml)
+    
+    # get top element
+    root = tree.getroot()
+
+    # load system information (maxorder::taylor order-1)
+    fcs_phonon=Fcs_phonon(root=root,maxorder=arg.maxorder-1)
+
+    # load fcs
+    fcs_phonon.load_fcs_xml()
+
+    # calculate energy of given files (arg.files)
+    print(" ")
+    print(f" CALCULATIONG POTENTIAL ENERGY SURFACE FOR GIVEN {len(arg.files)} FILES...")
+    counter=0
+    # output results
+    f = open(f"calc_pes_result.txt", "a")
+    f.write("# max displacement in Ang and energy in eV. \n")
+    
+    for filename in arg.files: 
+        print(f"   file number :: {counter}  , file name :: {filename}")
+        # calculate displacement
+        displacement=calc_displacement(arg.poscar,filename)
+        # calculate max displacement (for graph)
+        max_displacement=get_max_displace(arg.poscar,filename)
+        print(f"   The max displacement (Ang) in the {filename} is :: {max_displacement}")
+        # 
+        energy = np.zeros(arg.maxorder-1) # output energy for filename
+        for j in range(2,arg.maxorder): # loop over anharmonic orders (2 to arg.maxorder-1)
+            energy[j-1]=fcs_phonon.calculate_energy(displacement,j) 
+        #
+        print(f"  Finish calculating {filename} :: print order & energy [eV] ")
+        for j in range(2,arg.maxorder):
+            print(f"   {j}   {energy[j-1]} ") 
+        print(" ---------------- ")
+        print(" ")
+        # TODO :: output results to the result.txt
+        f.write("{:>12.8f}".format(max_displacement))
+        for j in range(2,arg.maxorder):
+            f.write(" {:>12.8f} ".format(energy[j-1]))
+        f.write("\n")
+        # update file counter
+        counter += 1
+        
+    # close output file
+    f.close()
+    #
+    # for i in np.arange(1,21):
+    #     i=str(i).zfill(2)
+    #     calc_subtract(i, dir)
+    #     filename=dir+"disp"+str(i)+".txt"
+    #     u0=np.loadtxt(filename)
+    #     u_norm=get_max_displace(filename)
+    #     # print(u_norm)
+    #     E2=fcs_phonon.calculate_energy(u0,2)
+    #     E3=fcs_phonon.calculate_energy(u0,3)
+    #     E4=fcs_phonon.calculate_energy(u0,4)
+    #     E5=fcs_phonon.calculate_energy(u0,5)
+    #     E6=fcs_phonon.calculate_energy(u0,6)
+    #     print(u_norm,E2,E3,E4,E5,E6)
+    return 0
+
+
+
+if __name__ == '__main__':
+    main()
 
