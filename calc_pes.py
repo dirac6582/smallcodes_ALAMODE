@@ -201,7 +201,7 @@ class System:
 class Fcs_phonon():
     def __init__(self,root,maxorder):
         self.__root=root # xml parse
-        self.maxorder=maxorder
+        self.maxorder=maxorder # taylor_order-1
         self.system=System(root=self.__root) # we need System so that we can use map_s2p.
         self.system.load_system_info()
         self.system.make_mapping()
@@ -217,7 +217,7 @@ class Fcs_phonon():
       # loop over IFC order
       print( "")
       print( " LOADING ANHARMONIC FORCE CONSTANTS IN XML.")
-      for order in range(self.maxorder):
+      for order in range(self.maxorder): # from 0 to 5
         print(f"    order =  {order}")
         if (order == 0):
           str_tag = "HARMONIC"
@@ -357,7 +357,7 @@ def main():
     # get top element
     root = tree.getroot()
 
-    # load system information (maxorder::taylor order-1)
+    # load system information (maxorder::taylor order-1, this setting is consistent with ALAMODE)
     fcs_phonon=Fcs_phonon(root=root,maxorder=arg.maxorder-1)
 
     # load fcs
@@ -378,20 +378,20 @@ def main():
         # calculate max displacement (for graph)
         max_displacement=get_max_displace(arg.poscar,filename)
         print(f"   The max displacement (Ang) in the {filename} is :: {max_displacement}")
-        # 
-        energy = np.zeros(arg.maxorder-1) # output energy for filename
-        for j in range(2,arg.maxorder): # loop over anharmonic orders (2 to arg.maxorder-1)
-            energy[j-1]=fcs_phonon.calculate_energy(displacement,j) 
+        # from 2 to maxorder (in total of arg.maxorder-1 energies)
+        energy:np.array = np.zeros(arg.maxorder-1) # output energy for filename
+        for j in range(arg.maxorder-1): # loop over anharmonic orders (0 to arg.maxorder-2)
+            energy[j]=fcs_phonon.calculate_energy(displacement,j+2) 
         #
         print(f"  Finish calculating {filename} :: print order & energy [eV] ")
-        for j in range(2,arg.maxorder):
-            print(f"   {j}   {energy[j-1]} ") 
+        for j in range(arg.maxorder-1): # loop over anharmonic orders (0 to arg.maxorder-2)
+            print(f"   {j+2}   {energy[j]} ") 
         print(" ---------------- ")
         print(" ")
         # TODO :: output results to the result.txt
         f.write("{:>12.8f}".format(max_displacement))
-        for j in range(2,arg.maxorder):
-            f.write(" {:>12.8f} ".format(energy[j-1]))
+        for j in range(arg.maxorder-1): # loop over anharmonic orders (0 to arg.maxorder-2)
+            f.write(" {:>12.8f} ".format(energy[j]))
         f.write("\n")
         # update file counter
         counter += 1

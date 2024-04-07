@@ -2,7 +2,7 @@
 # %file%
 #
 # ========================
-# Time-stamp: <2024-04-05 01:04:10 amano>
+# Time-stamp: <2024-04-07 18:35:29 amano>
 
 
 # output setting
@@ -31,5 +31,6 @@ set key left top
 plot \
   "output/vasp20230117.txt"    u 1:(($2+69.82869692)*1000) title "vasp" ,\
   "calc_pes_result.txt" u ($1*0.529177249):($2*1000) title "harm",\
-  "calc_pes_result.txt" u ($1*0.529177249):($4*1000) title "quartic"
+  "calc_pes_result.txt" u ($1*0.529177249):($4*1000) title "quartic",\
+  "calc_pes_result.txt" u ($1*0.529177249):($6*1000) title "6th"
 
